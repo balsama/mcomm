@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Checks to see if we should be displaying mcomm blocks or not and sets and
  * deletes the appropriate $_SESSION variables accordingly.
@@ -7,7 +6,14 @@
  * @return bool/mixed
  *   - TRUE if we should currently be displaying mcomm blocks
  *   - FALSE if not
- *   - Non bool zero if `commset` URL param or session is present but it is invalid.
+ *   - Non bool zero if `commset` URL param or session is present but it is
+ *     invalid.
+ *
+ * @TODO This functionality needs to:
+ *   1. Make use of cookies instead of session
+ *   2. Possibly use the anon_uuid module to identify when a new session has
+ *      begun for anon users.
+ *   Currently, session data is preserved after a user closes their browser.
  */
 function mcomm_display_blocks() {
   dpm($_SESSION['LAST_ACTIVITY']);
