@@ -1,0 +1,6 @@
+package = Custom
+name = Mandatory Communications
+description = Provides and admin interface to define communication sets and displays those communication sets when triggered by a URL param.
+core = 6.x
+version = 6.x-1.0
+

@@ -1,0 +1,43 @@
+#main #block-mcomm-mcomm_alert_1,
+#main #block-mcomm-mcomm_alert_2 {
+  background-color: #0074c9;
+  border-color: #0074c9;
+  color: #fff;
+}
+#main #block-mcomm-mcomm_alert_1 .block-inner,
+#main #block-mcomm-mcomm_alert_2 .block-inner { color: #fff;}
+#main #block-mcomm-mcomm_alert_1 .block-inner a,
+#main #block-mcomm-mcomm_alert_2 .block-inner a { color: #fff; text-decoration: underline;}
+
+#page #main .block-mcomm .icon {
+  background-color: transparent;
+  background-image: url(mcomm-sprite.png);
+  background-position: 0px 0px;
+  display: inline-block;
+  float: left;
+  height: 21px;
+  margin-right: 16px;
+  right: inherit;
+  position: relative;
+  top: inherit;
+  width: 21px;
+}
+
+#block-mcomm-mcomm_alert_2 .content {
+  font-size: 116%;
+  padding: 10px 16px;
+}
+
+/**
+ * Article list
+ */
+/* Landing Page */
+.mcomm-article-list a {
+  display: block;
+  float: left;
+  width: 250px;
+}
+
+/* Article Page */
+.expandable { display: none;}
+.mcomm-toggle {cursor: pointer;}

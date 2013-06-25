@@ -1,0 +1,266 @@
+<?php
+
+/**
+ * Checks to see if we should be displaying mcomm blocks or not and sets and
+ * deletes the appropriate $_SESSION variables accordingly.
+ *
+ * @return bool/mixed
+ *   - TRUE if we should currently be displaying mcomm blocks
+ *   - FALSE if not
+ *   - Non bool zero if `commset` URL param or session is present but it is invalid.
+ */
+function mcomm_display_blocks() {
+  dpm($_SESSION['LAST_ACTIVITY']);
+  if (isset($_GET['commset'])) {
+    if (mcomm_is_valid_commset($_GET['commset'])) {
+      $_SESSION['commset'] = $_GET['commset'];
+      return TRUE;
+    }
+    else {
+      watchdog('mcomm', 'Invalid CommSet "@commset" requested in URL param.', array('@commset' => $_GET['commset']));
+      return 0;
+    }
+  }
+  elseif (isset($_SESSION['commset'])) {
+    if (mcomm_is_valid_commset($_SESSION['commset'])) {
+      return TRUE;
+    }
+    else {
+      unset($_SESSION['commset']);
+      watchdog('mcomm', 'Invalid Commset "@commset" in SESSION. This is usually indicative of a recent CommSet definition update.', array('@commset' => $_GET['commset']));
+      return 0;
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Determines if a given CommSet ID is valid.
+ *
+ * @return bool
+ *   TRUE if provided Communication Set ID is entered in our system and has a
+ *   definition. False if not.
+ */
+function mcomm_is_valid_commset($csid) {
+  $commsets = mcomm_get_db_commset_definitions();
+  if (isset($commsets[$csid])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_menu()
+ */
+function mcomm_menu() {
+  $items['admin/settings/mcomm'] = array(
+    'title' => 'Mandatory Communications',
+    'description' => 'View CommSet status and import new configurations.',
+    'page callback' => 'mcomm_admin',
+    'access arguments' => array('administer mcomm'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'mcomm.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_perm().
+ */
+function mcomm_perm() {
+  return array('administer mcomm');
+}
+
+/**
+ * Reads the commsets/commsets.inc file and updates the `mcomm_commsets`
+ * varible with the contents - overwriting anything that was previously in the
+ * `commsets` var.
+ */
+function mcomm_update_commset_definitions() {
+  if ($definitions = mcomm_get_file_commset_definitions()) {
+    variable_set('mcomm_commsets', $definitions);
+    drupal_set_message('CommSet Definitions have been updated based on the contents of the `commsets.inc` file.');
+  }
+}
+/**
+ * @return array
+ *   Array containing the commset definitions in the file.
+ */
+function mcomm_get_file_commset_definitions() {
+  include(drupal_get_path('module', 'mcomm') . '/commsets/commsets.inc');
+  if (is_array($commsets)) {
+    return $commsets;
+  }
+  drupal_set_message('You have a syntax error in the `commsets.inc` file. Please fix the errors and try again.');
+  return FALSE;
+}
+
+/**
+ * @return array
+ *   Array containing the curently loaded commset definitions
+ */
+function mcomm_get_db_commset_definitions() {
+  return variable_get('mcomm_commsets', null);
+}
+
+/**
+ * Get a specific commset definition.
+ *
+ * @return array
+ *   Array containing the specific commset for the current user or commset
+ *   passed as param. Will return false if the current user shouldn't have a
+ *   commset displayed or an invalid commsetis provided as a param, but
+ *   normally, this shouldn't be called in that situation.
+ */
+function mcomm_get_commset($commset = FALSE) {
+  if ($commset) {
+    if (mcomm_is_valid_commset($commset)) {
+      $commsets = mcomm_get_db_commset_definitions();
+      return $commsets[$commset];
+    }
+    else {
+      // @todo watchdog message
+      return FALSE;
+    }
+  }
+  else {
+    if (isset($_GET['commset'])) {
+      if (mcomm_is_valid_commset($_GET['commset'])) {
+        $commsets = mcomm_get_db_commset_definitions();
+        return $commsets[$_GET['commset']];
+      }
+      // @todo watchdog message
+      return FALSE;
+    }
+    elseif (isset($_SESSION['commset'])) {
+      if (mcomm_is_valid_commset($_SESSION['commset'])) {
+        $commsets = mcomm_get_db_commset_definitions();
+        return $commsets[$_SESSION['commset']];
+      }
+      else {
+        // @todo watchdog message
+        return FALSE;
+      }
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_block().
+ */
+function mcomm_block($op = 'list', $delta = 0, $edit = array()) {
+  if ($op == "list") {
+    $block['mcomm_alert_1'] = array(
+      'info' => 'MComm Alert 1',
+      'region' => 'sidebar',
+      'status' => 1,
+      'visibility' => 1,
+    );
+
+    $block['mcomm_alert_2'] = array(
+      'info' => 'MComm Alert 2',
+      'region' => 'content_bottom',
+      'visibility' => 2,
+      'pages' => '
+<?php
+if ((is_numeric(arg(1))) && (arg(0) == "node")) {
+  $node = menu_get_object();
+  if (($node->type == "article") || ($node->type == "offer")) {
+    return TRUE;
+  }
+}
+return FALSE;
+?>
+      ',
+      'status' => 1,
+    );
+
+    $block['mcomm_tab'] = array(
+      'info' => 'MComm Tab',
+      'region' => 'menus',
+      'status' => 1,
+      'visibility' => 1,
+    );
+
+    $block['mcomm_mc'] = array(
+      'info' => 'MComm Mandatory Communications',
+      'visibility' => 2,
+      'pages' => '
+<?php
+if ((is_numeric(arg(1))) && (arg(0) == "node")) {
+  $node = menu_get_object();
+  if (($node->type == "article") || ($node->type == "offer")) {
+    return TRUE;
+  }
+}
+return FALSE;
+?>
+      ',
+      'region' => 'content_top',
+      'status' => 1,
+    );
+
+    return $block;
+  }
+
+  elseif ($op == "view") {
+    if (mcomm_display_blocks()) {
+      drupal_add_css(drupal_get_path('module', 'mcomm') . '/mcomm.css');
+      switch ($delta) :
+        case 'mcomm_alert_1' :
+        case 'mcomm_alert_2' :
+          $block['content'] = theme('mcomm_alert');
+          break;
+
+        case 'mcomm_tab' :
+          $block['content'] = theme('mcomm_tab');
+          break;
+
+        case 'mcomm_mc' :
+          drupal_add_js(drupal_get_path('module', 'mcomm') . '/mcomm.js', 'module', 'footer');
+          $block['content'] = theme('mcomm_mc', mcomm_get_commset());
+          break;
+
+      endswitch;
+
+      return $block;
+    }
+  }
+}
+
+/**
+ * Implements hook_theme()
+ */
+function mcomm_theme() {
+  $lp_nid = variable_get('mcomm_lp_nid', 100);
+  return array(
+    'mcomm_alert' => array(
+      'arguments' => array('lp_nid' => $lp_nid),
+      'template' => 'mcomm-alert',
+    ),
+    'mcomm_tab' => array(
+      'arguments' => array('lp_nid' => $lp_nid),
+      'template' => 'mcomm-tab',
+    ),
+    'mcomm_mc' => array(
+      'arguments' => array('commset' => null),
+      'template' => 'mcomm-mc',
+    ),
+  );
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK()
+ *
+ * Provides the commset array (if set) to MComm nodes
+ */
+function mcomm_preprocess_node(&$vars) {
+  if (mcomm_display_blocks()) {
+    $node = menu_get_object();
+    if ($node->type == 'mcomm_lp') {
+      $vars['commset'] = mcomm_get_commset();
+    }
+  }
+}
