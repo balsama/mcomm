@@ -166,6 +166,8 @@ function mcomm_get_commset($commset = FALSE) {
  *     Communications areticles defined in the commset. Displayed on all
  *     article and offer pages.
  *   - Pic: That stupid picture of the family on the landing page.
+ *   - SM (Social Media): Identical to the block provided by the varblock
+ *     module except it accepts variables for the link URLs.
  *
  * In addition to the normal core visibility rules configured here, these
  * blocks are only available if mcomm_show_blocks() returns TRUE.
@@ -178,6 +180,7 @@ function mcomm_block($op = 'list', $delta = 0, $edit = array()) {
         'region' => 'sidebar',
         'status' => 1,
         'visibility' => 0,
+        'weight' => -21,
       );
 
       $block['mcomm_alert_2'] = array(
@@ -236,7 +239,15 @@ if (arg(1) == variable_get("mcomm_lp_nid", 100)) {
 return FALSE;
 ?>
         ',
-        'weight' => -99,
+        'weight' => -22,
+      );
+
+      $block['mcomm_sm'] = array(
+        'info' => 'MComm Social Media',
+        'region' => 'sidebar',
+        'status' => 1,
+        'visibility' => 0,
+        'weight' => -20,
       );
 
       return $block;
@@ -263,6 +274,10 @@ return FALSE;
           $block['content'] = 'Picture of a family on a dock (replaced in a cutsom template file)';
           break;
 
+        case 'mcomm_sm' :
+          $block['content'] = theme('mcomm_sm', mcomm_get_commset());
+          break;
+
       endswitch;
 
       return $block;
@@ -287,6 +302,10 @@ function mcomm_theme() {
     'mcomm_mc' => array(
       'arguments' => array('commset' => null, 'lp_nid' => null),
       'template' => 'templates/mcomm-mc',
+    ),
+    'mcomm_sm' => array(
+      'arguments' => array('commset' => null),
+      'template' => 'templates/mcomm-sm',
     ),
   );
 }

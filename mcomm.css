@@ -53,7 +53,7 @@
   background-image: url(images/mcomm-sprite.png);
   background-position: -33px -1px;
   height: 20px;
-  margin-right: 4px;
+  margin-right: 8px;
   width: 9px;
 }
 .mcomm-article-list-landing .text {
@@ -164,9 +164,15 @@ p.style-no-4368 {
   width: 327px;
 }
 
-
-
-
+/* SM Block */
+.gswu {
+  float: left;
+  font-size: 18px;
+  font-weight: bold;
+  margin-right: 16px;
+  position: relative;
+  top: 8px;
+}
 
 
 
