@@ -1,25 +1,21 @@
 <?php
 /**
  * Checks to see if we should be displaying mcomm blocks or not and sets and
- * deletes the appropriate $_SESSION variables accordingly.
+ * deletes the appropriate $_COOKIE variables accordingly.
  *
  * @return bool/mixed
  *   - TRUE if we should currently be displaying mcomm blocks
  *   - FALSE if not
  *   - Non bool zero if `commset` URL param or session is present but it is
  *     invalid.
- *
- * @TODO This functionality needs to:
- *   1. Make use of cookies instead of session
- *   2. Possibly use the anon_uuid module to identify when a new session has
- *      begun for anon users.
- *   Currently, session data is preserved after a user closes their browser.
  */
 function mcomm_display_blocks() {
-  dpm($_SESSION['LAST_ACTIVITY']);
+  if ((arg(0) == 'admin') && (arg(1) == 'build') && (arg(2) == 'block')) {
+    return TRUE;
+  }
   if (isset($_GET['commset'])) {
     if (mcomm_is_valid_commset($_GET['commset'])) {
-      $_SESSION['commset'] = $_GET['commset'];
+      setcookie('commset', $_GET['commset'], 0, base_path());
       return TRUE;
     }
     else {
@@ -27,13 +23,13 @@ function mcomm_display_blocks() {
       return 0;
     }
   }
-  elseif (isset($_SESSION['commset'])) {
-    if (mcomm_is_valid_commset($_SESSION['commset'])) {
+  elseif (isset($_COOKIE['commset'])) {
+    if (mcomm_is_valid_commset($_COOKIE['commset'])) {
       return TRUE;
     }
     else {
-      unset($_SESSION['commset']);
-      watchdog('mcomm', 'Invalid Commset "@commset" in SESSION. This is usually indicative of a recent CommSet definition update.', array('@commset' => $_GET['commset']));
+      setcookie('commset', '', -1, base_path());
+      watchdog('mcomm', 'Invalid Commset "@commset" in COOKIE. This is usually indicative of a recent CommSet definition update.', array('@commset' => $_GET['commset']));
       return 0;
     }
   }
@@ -89,12 +85,15 @@ function mcomm_update_commset_definitions() {
     drupal_set_message('CommSet Definitions have been updated based on the contents of the `commsets.inc` file.');
   }
 }
+
 /**
  * @return array
  *   Array containing the commset definitions in the file.
  */
 function mcomm_get_file_commset_definitions() {
   include(drupal_get_path('module', 'mcomm') . '/commsets/commsets.inc');
+  // Very general error checking. A serious syntax error is still possible and
+  // would result in a 500.
   if (is_array($commsets)) {
     return $commsets;
   }
@@ -116,7 +115,7 @@ function mcomm_get_db_commset_definitions() {
  * @return array
  *   Array containing the specific commset for the current user or commset
  *   passed as param. Will return false if the current user shouldn't have a
- *   commset displayed or an invalid commsetis provided as a param, but
+ *   commset displayed or an invalid commset is provided as a param, but
  *   normally, this shouldn't be called in that situation.
  */
 function mcomm_get_commset($commset = FALSE) {
@@ -126,7 +125,7 @@ function mcomm_get_commset($commset = FALSE) {
       return $commsets[$commset];
     }
     else {
-      // @todo watchdog message
+      watchdog('mcomm', 'Invalid CommSet passed as argument to mcomm_get_commset(): "@commset".', array('@commset' => $commset));
       return FALSE;
     }
   }
@@ -136,16 +135,16 @@ function mcomm_get_commset($commset = FALSE) {
         $commsets = mcomm_get_db_commset_definitions();
         return $commsets[$_GET['commset']];
       }
-      // @todo watchdog message
+      watchdog('mcomm', 'Invalid CommSet "@commset" requested in URL param.', array('@commset' => $_GET['commset']));
       return FALSE;
     }
-    elseif (isset($_SESSION['commset'])) {
-      if (mcomm_is_valid_commset($_SESSION['commset'])) {
+    elseif (isset($_COOKIE['commset'])) {
+      if (mcomm_is_valid_commset($_COOKIE['commset'])) {
         $commsets = mcomm_get_db_commset_definitions();
-        return $commsets[$_SESSION['commset']];
+        return $commsets[$_COOKIE['commset']];
       }
       else {
-        // @todo watchdog message
+        watchdog('mcomm', 'Invalid CommSet "@commset" stored in user cookie.', array('@commset' => $_COOKIE['commset']));
         return FALSE;
       }
     }
@@ -155,21 +154,37 @@ function mcomm_get_commset($commset = FALSE) {
 
 /**
  * Implements hook_block().
+ *
+ * This generates five blocks:
+ *   - Alert 1: the "alert" shown in the sidebar that links back to the
+ *     landing page (landing page nid is configured on this module's admin
+ *     page). Displayed on all pages.
+ *   - Alert 2: identical to Alert 1. Displayed in content_bottom on all
+ *     article and offer nodes.
+ *   - Tab: The pseudo menu item that links back to the landing page.
+ *   - MC (Mandatory Communications): Displays links to the Mandatory
+ *     Communications areticles defined in the commset. Displayed on all
+ *     article and offer pages.
+ *   - Pic: That stupid picture of the family on the landing page.
+ *
+ * In addition to the normal core visibility rules configured here, these
+ * blocks are only available if mcomm_show_blocks() returns TRUE.
  */
 function mcomm_block($op = 'list', $delta = 0, $edit = array()) {
-  if ($op == "list") {
-    $block['mcomm_alert_1'] = array(
-      'info' => 'MComm Alert 1',
-      'region' => 'sidebar',
-      'status' => 1,
-      'visibility' => 1,
-    );
+  if (mcomm_display_blocks()) {
+    if ($op == "list") {
+      $block['mcomm_alert_1'] = array(
+        'info' => 'MComm Alert 1',
+        'region' => 'sidebar',
+        'status' => 1,
+        'visibility' => 0,
+      );
 
-    $block['mcomm_alert_2'] = array(
-      'info' => 'MComm Alert 2',
-      'region' => 'content_bottom',
-      'visibility' => 2,
-      'pages' => '
+      $block['mcomm_alert_2'] = array(
+        'info' => 'MComm Alert 2',
+        'region' => 'content_bottom',
+        'visibility' => 2,
+        'pages' => '
 <?php
 if ((is_numeric(arg(1))) && (arg(0) == "node")) {
   $node = menu_get_object();
@@ -179,21 +194,21 @@ if ((is_numeric(arg(1))) && (arg(0) == "node")) {
 }
 return FALSE;
 ?>
-      ',
-      'status' => 1,
-    );
+        ',
+        'status' => 1,
+      );
 
-    $block['mcomm_tab'] = array(
-      'info' => 'MComm Tab',
-      'region' => 'menus',
-      'status' => 1,
-      'visibility' => 1,
-    );
+      $block['mcomm_tab'] = array(
+        'info' => 'MComm Tab',
+        'region' => 'menus',
+        'status' => 1,
+        'visibility' => 0,
+      );
 
-    $block['mcomm_mc'] = array(
-      'info' => 'MComm Mandatory Communications',
-      'visibility' => 2,
-      'pages' => '
+      $block['mcomm_mc'] = array(
+        'info' => 'MComm Mandatory Communications',
+        'visibility' => 2,
+        'pages' => '
 <?php
 if ((is_numeric(arg(1))) && (arg(0) == "node")) {
   $node = menu_get_object();
@@ -203,16 +218,31 @@ if ((is_numeric(arg(1))) && (arg(0) == "node")) {
 }
 return FALSE;
 ?>
-      ',
-      'region' => 'content_top',
-      'status' => 1,
-    );
+        ',
+        'region' => 'content_top',
+        'status' => 1,
+      );
 
-    return $block;
-  }
+      $block['mcomm_pic'] = array(
+        'info' => 'MComm Pic',
+        'region' => 'sidebar',
+        'status' => 1,
+        'visibility' => 2,
+        'pages' => '
+<?php
+if (arg(1) == variable_get("mcomm_lp_nid", 100)) {
+  return TRUE;
+}
+return FALSE;
+?>
+        ',
+        'weight' => -99,
+      );
 
-  elseif ($op == "view") {
-    if (mcomm_display_blocks()) {
+      return $block;
+    }
+
+    elseif ($op == "view") {
       drupal_add_css(drupal_get_path('module', 'mcomm') . '/mcomm.css');
       switch ($delta) :
         case 'mcomm_alert_1' :
@@ -226,7 +256,11 @@ return FALSE;
 
         case 'mcomm_mc' :
           drupal_add_js(drupal_get_path('module', 'mcomm') . '/mcomm.js', 'module', 'footer');
-          $block['content'] = theme('mcomm_mc', mcomm_get_commset());
+          $block['content'] = theme('mcomm_mc', mcomm_get_commset(), variable_get('mcomm_lp_nid', 100));
+          break;
+
+        case 'mcomm_pic' :
+          $block['content'] = 'Picture of a family on a dock (replaced in a cutsom template file)';
           break;
 
       endswitch;
@@ -244,15 +278,15 @@ function mcomm_theme() {
   return array(
     'mcomm_alert' => array(
       'arguments' => array('lp_nid' => $lp_nid),
-      'template' => 'mcomm-alert',
+      'template' => 'templates/mcomm-alert',
     ),
     'mcomm_tab' => array(
       'arguments' => array('lp_nid' => $lp_nid),
-      'template' => 'mcomm-tab',
+      'template' => 'templates/mcomm-tab',
     ),
     'mcomm_mc' => array(
-      'arguments' => array('commset' => null),
-      'template' => 'mcomm-mc',
+      'arguments' => array('commset' => null, 'lp_nid' => null),
+      'template' => 'templates/mcomm-mc',
     ),
   );
 }
@@ -263,10 +297,9 @@ function mcomm_theme() {
  * Provides the commset array (if set) to MComm nodes
  */
 function mcomm_preprocess_node(&$vars) {
-  if (mcomm_display_blocks()) {
-    $node = menu_get_object();
-    if ($node->type == 'mcomm_lp') {
-      $vars['commset'] = mcomm_get_commset();
-    }
+  $node = menu_get_object();
+  if ($node->type == 'mcomm_lp') {
+    $vars['commset'] = mcomm_get_commset();
   }
 }
+

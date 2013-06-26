@@ -1,7 +1,7 @@
 <div class="mandatory-articles">
-  <h2 class="headline">Healthy You</h2>
+  <?php print l('<h2 class="headline">Healthy You</h2>', 'node/' . $lp_nid, array('html' => TRUE)); ?>
 
-  <p>Important information about your rights and benefits</p>
+  <p class="style-no-4368">Important information about your rights and benefits</p>
 
   <div class="mcomm-article-list mcomm-article-list-article clearfix">
     <?php

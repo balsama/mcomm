@@ -1,8 +1,6 @@
-$(document).ready(function() {
-  $('.mcomm-toggle').click(function() {
-    var state = $(this).attr('rel');
-    toggle_mcomm(state);
-  });
+$('.mcomm-toggle').click(function() {
+  var state = $(this).attr('rel');
+  toggle_mcomm(state);
 });
 
 function toggle_mcomm(state) {
@@ -15,13 +13,15 @@ function toggle_mcomm(state) {
 }
 
 function mcomm_open() {
-  $('.mcomm-toggle').attr('rel', 'expanded');
-  $('.mcomm-article-list-article .expandable').slideDown();
-  $('.mcomm-toggle').html('<span>-</span> Collapse');
+  $('.mcomm-article-list-article .expandable').slideDown(function() {
+    $('.mcomm-toggle').attr('rel', 'expanded');
+    $('.mcomm-toggle').html('<span>–</span> Collapse');
+  });
 }
 
 function mcomm_close() {
-  $('.mcomm-toggle').attr('rel', 'collapsed');
-  $('.mcomm-article-list-article .expandable').slideUp();
-  $('.mcomm-toggle').html('<span>+</span> Expand');
+  $('.mcomm-article-list-article .expandable').slideUp(function() {
+    $('.mcomm-toggle').attr('rel', 'collapsed');
+    $('.mcomm-toggle').html('<span>+</span> Expand');
+  });
 }
